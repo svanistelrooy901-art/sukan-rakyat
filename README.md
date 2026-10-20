@@ -41,3 +41,12 @@ No Google login button pretends to authenticate. No demo QR pretends to accept m
 
 ## Verification
 `npm test` checks collection arithmetic, capacity and waiting lists, membership visibility, payment transitions and role restrictions, variable sports capacities, team balance and persistence. `npm run check` checks JavaScript syntax; `npm run build` packages static assets. Browser/device visual and install QA remains outstanding where browser preview is unavailable.
+
+## V1 additions — Maps and flexible collections
+Google Maps HTTPS links can be set on creation or edited under Payments. Supported known Maps domains only; external links open in a new tab.
+
+Fee modes: manual, cost / maximum capacity, or cost / actual attendance. New automatic sessions initially estimate using maximum capacity. Actual-attendance recalculation requires all active attendees marked present or absent and at least one present. Organizer previews and explicitly confirms new assessments. Attendance edits alone never change fees. Absent participants are assessed RM0 on actual-attendance confirmation. Costs are integer cents; per-person amounts round up to the nearest cent and the preview discloses rounding surplus.
+
+Local payment ledgers preserve confirmed amounts across fee changes, with partial payments, outstanding balances and overpayment display. Pending claims retain their original amount when rates change. Organizers enter the actual amount received for each confirmation. Corrections append a negative ledger entry; no funds are transferred or refunded. Old demo records migrate without resetting their data.
+
+Deadlines are optional, editable, and may be before or after the session. In-app reminders show near the selected deadline (24/48 hours) and when overdue. Organizer can copy a WhatsApp reminder; no message is automatically sent. Email / push scheduling and true cross-device reminders require the Phase 2 backend.
