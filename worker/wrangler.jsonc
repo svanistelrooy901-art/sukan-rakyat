@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sukan-rakyat-api",
+  "main": "src.js",
+  "compatibility_date": "2026-10-20",
+  "workers_dev": true,
+  "vars": {
+    "FRONTEND_ORIGIN": "https://svanistelrooy901-art.github.io",
+    "GOOGLE_CLIENT_ID": "REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "sukan-rakyat",
+    "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+    "migrations_dir": "migrations"
+  }],
+  "triggers": {"crons": ["17 3 * * *"]}
+}
