@@ -34,3 +34,26 @@ export function receiptLink(s,p){
  const text=`Salam ${s.ownerName}, saya ${p.name}.\nSukan Rakyat — ${s.title}\nTarikh sesi: ${new Date(s.date).toLocaleString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'})} (MYT)\nSaya dah transfer ${money(amount)}.\nSaya akan lampirkan resit di sini. Mohon semak transaksi bank. Terima kasih!`;
  return 'https://wa.me/'+phone+'?text='+encodeURIComponent(text);
 }
+
+export const FORMATIONS={'11 sebelah':['4-3-3','4-4-2','3-5-2'],'9 sebelah':['3-3-2','3-2-3','4-3-1'],'5 sebelah':['2-2','1-2-1','3-1']};
+export function lineupSlots(s){
+ if(s.sport==='badminton'||!FORMATIONS[s.format]?.includes(s.formation))throw new Error('Formation tidak sah.');
+ const rows=[1,...s.formation.split('-').map(Number)];
+ return rows.flatMap((count,row)=>Array.from({length:count},(_,col)=>({id:`${row}:${col}`,row,label:row===0?'GK':`${row===1?'DEF':row===rows.length-1?'FWD':'MID'} ${col+1}`})));
+}
+export function setLineup(s,actor,team,slot,playerId){
+ if(actor!==s.owner)throw new Error('Hanya organizer boleh susun posisi.');
+ if(!['A','B'].includes(team)||!lineupSlots(s).some(x=>x.id===slot))throw new Error('Posisi tidak sah.');
+ const ps=s.players.filter(p=>p.status==='joined'&&p.team===team),old=ps.find(p=>p.position===slot);
+ if(playerId===''){if(old)old.position='';return}
+ const p=ps.find(p=>p.id===playerId);if(!p)throw new Error('Pilih peserta aktif dalam team ini dahulu.');
+ if(old?.id===p.id)return;
+ const previous=lineupSlots(s).some(x=>x.id===p.position)?p.position:'';
+ if(old)old.position=previous;
+ p.position=slot;
+}
+export function setFormation(s,actor,formation){
+ if(actor!==s.owner)throw new Error('Hanya organizer boleh ubah formation.');
+ if(s.sport==='badminton'||!FORMATIONS[s.format]?.includes(formation))throw new Error('Formation tidak sah.');
+ if(s.formation!==formation){s.formation=formation;for(const p of s.players)p.position=''}
+}

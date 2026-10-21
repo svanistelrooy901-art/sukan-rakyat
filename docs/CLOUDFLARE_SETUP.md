@@ -110,3 +110,9 @@ New sessions require an organizer WhatsApp number. Malaysian local numbers are n
 After “Saya dah bayar”, the app records a pending claim then opens a WhatsApp draft. The participant attaches the receipt and sends it themselves. A retry link remains available. Bank verification stays manual; a WhatsApp draft does not confirm payment. No receipt files are uploaded to the backend.
 
 Deploy **Deploy Cloudflare trial backend** from `main` for this update. The Pages health check requires `features.receiptWhatsApp` and holds publication until the updated backend is available. Successful backend workflow completion automatically starts Pages deployment.
+
+### Manual formation positions
+
+For football and futsal, assign players to Team A/B, then click a pitch slot (GK/DEF/MID/FWD) to choose its player. No player is placed automatically. Unplaced players remain substitutes. Moving an on-field player swaps the two positions; selecting a substitute sends the previous occupant to the bench. Each team can use the same slot independently. Changing formation clears positions in both teams; changing a player's team clears that player's position. Only the organizer can change positions, enforced by the API. Badminton keeps its pair/court controls.
+
+Deploy the backend from main for `features.lineupPositions`; Pages publication is held until the backend supports this command.

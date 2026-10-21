@@ -39,3 +39,17 @@ test('organizer WhatsApp is required, private, and editable only by the organize
  assert.equal((await cmd(call,s,'contact',{organizerPhone:''})).status,400);
  assert.equal((await call('/health')).data.features.receiptWhatsApp,true);
 });
+test('manual lineup is organizer-only, team-scoped and survives API reloads',async()=>{
+ const{call}=await setup(),s=await create(call);await join(call,s,'alice');
+ await cmd(call,s,'assign',{playerId:'owner',team:'A'});await cmd(call,s,'assign',{playerId:'alice',team:'A'});
+ assert.equal((await cmd(call,s,'position',{team:'A',slot:'0:0',playerId:'alice'},'alice')).status,403);
+ assert.equal((await cmd(call,s,'position',{team:'A',slot:'0:0',playerId:'alice'})).status,200);
+ assert.equal((await cmd(call,s,'position',{team:'A',slot:'1:0',playerId:'owner'})).status,200);
+ await cmd(call,s,'position',{team:'A',slot:'0:0',playerId:'owner'});
+ let saved=(await call('/sessions/'+s.id)).data.session;assert.equal(saved.players.find(p=>p.id==='owner').position,'0:0');assert.equal(saved.players.find(p=>p.id==='alice').position,'1:0');
+ await cmd(call,s,'assign',{playerId:'alice',team:'B'});saved=(await call('/sessions/'+s.id)).data.session;assert.equal(saved.players.find(p=>p.id==='alice').position,'');
+ assert.equal((await cmd(call,s,'position',{team:'A',slot:'0:0',playerId:'alice'})).status,400);
+ assert.equal((await cmd(call,s,'position',{team:'A',slot:'9:9',playerId:'owner'})).status,400);
+ await cmd(call,s,'formation',{formation:'1-2-1'});saved=(await call('/sessions/'+s.id)).data.session;assert.ok(saved.players.every(p=>p.position===''));
+ assert.equal((await call('/health')).data.features.lineupPositions,true);
+});
