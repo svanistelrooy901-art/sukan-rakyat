@@ -53,3 +53,8 @@ test('manual lineup is organizer-only, team-scoped and survives API reloads',asy
  await cmd(call,s,'formation',{formation:'1-2-1'});saved=(await call('/sessions/'+s.id)).data.session;assert.ok(saved.players.every(p=>p.position===''));
  assert.equal((await call('/health')).data.features.lineupPositions,true);
 });
+test('migration accepts only exact additional frontend origins and preserves original origin',async()=>{
+ const{call,env}=await setup();env.ADDITIONAL_FRONTEND_ORIGINS='https://sukan-rakyat-test.pages.dev';
+ for(const origin of[env.FRONTEND_ORIGIN,'https://sukan-rakyat-test.pages.dev']){const r=await call('/auth/challenge','POST',{},'none',origin);assert.equal(r.status,200);assert.equal(r.headers.get('Access-Control-Allow-Origin'),origin);assert.equal(r.headers.get('Vary'),'Origin')}
+ for(const origin of['https://preview.sukan-rakyat-test.pages.dev','https://sukan-rakyat-test.pages.dev.evil.example','null',null,''])assert.equal((await call('/auth/challenge','POST',{},'none',origin)).status,403);
+});

@@ -5,10 +5,11 @@ A vibrant, mobile-first sports-session portal for football (11/9 a side), futsal
 
 ## Status
 
-- Phase 1 demo is published on GitHub Pages: https://svanistelrooy901-art.github.io/sukan-rakyat/
-- Cloudflare Workers + D1 backend and connected trial frontend are implemented and tested locally.
-- Real Google login and shared trial data require the owner account setup in [CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md). They are not active merely because this source is present.
-- Without `SUKAN_API_URL`, the website stays in local demo mode. `?mode=demo` explicitly opens it; real/demo data never mix.
+- Google-login trial frontend and Cloudflare Workers + D1 backend are deployed.
+- GitHub Pages remains available during migration: https://svanistelrooy901-art.github.io/sukan-rakyat/
+- Cloudflare Pages deployment, exact-origin migration, hourly health checks and account-wide quota monitoring are configured in GitHub Actions. Their runtime status and remaining owner setup are described in [BETA_OPERATIONS.md](docs/BETA_OPERATIONS.md).
+- Google login on the new Pages origin requires adding the URL returned by deployment to the existing Google Web Client. Real two-account and device testing remains required before beta invitations.
+- `?mode=demo` opens local example data; real/demo data never mix.
 
 ## Features
 

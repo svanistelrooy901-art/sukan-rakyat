@@ -3,7 +3,7 @@ import {API_BASE} from '../config.js';
 const base=process.env.SUKAN_API_URL||API_BASE;
 if(!base){console.log('Demo mode: no backend configured.');process.exit(0)}
 const u=new URL(base);assert.equal(u.protocol,'https:');assert.equal(u.pathname,'/');
-const origin='https://svanistelrooy901-art.github.io';
+const origin=process.env.SUKAN_FRONTEND_ORIGIN||'https://svanistelrooy901-art.github.io';
 async function request(path,options={}){return fetch(u.origin+path,{...options,signal:AbortSignal.timeout(20000)})}
 const health=await request('/health');assert.equal(health.status,200);const status=await health.json();assert.equal(status.ok,true);assert.equal(status.features?.receiptWhatsApp,true,'Deploy Cloudflare backend with WhatsApp receipt support before publishing frontend.');
 assert.equal(status.features?.lineupPositions,true,'Deploy Cloudflare backend with manual formation positions before publishing frontend.');

@@ -1,0 +1,58 @@
+name: Deploy Cloudflare Pages beta
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', 'README.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sukan-rakyat-backend
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      SUKAN_API_URL: ${{ vars.SUKAN_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+      - run: npm run build
+      - name: Prepare Direct Upload project
+        id: pages
+        run: node scripts/prepare-pages.mjs
+      - name: Upload frontend
+        run: npx --no-install wrangler pages deploy dist --project-name "$PAGES_PROJECT" --branch main
+        env:
+          PAGES_PROJECT: ${{ steps.pages.outputs.project }}
+      - name: Allow exact production origin in backend
+        run: node worker/configure.mjs
+        env:
+          CLOUDFLARE_PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
+      - run: npx --no-install wrangler deploy --config worker/deploy.json
+      - name: Check API access from both frontend origins
+        run: |
+          node scripts/check-backend.mjs
+          SUKAN_FRONTEND_ORIGIN="$PAGES_ORIGIN" node scripts/check-backend.mjs
+        env:
+          PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
+      - name: Check published frontend assets
+        run: node scripts/check-frontend.mjs
+        env:
+          SUKAN_FRONTEND_ORIGIN: ${{ steps.pages.outputs.origin }}
+      - name: Publish setup result
+        run: |
+          printf '## Cloudflare Pages beta\n\nFrontend: %s\n\nAdd this exact origin to the existing Google Web Client → Authorized JavaScript origins before inviting testers.\n\nGitHub Pages remains available during the two-account login trial.\n' "$PAGES_ORIGIN" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}

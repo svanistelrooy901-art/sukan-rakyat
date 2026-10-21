@@ -1,0 +1,44 @@
+name: Beta health and usage monitor
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/monitor.yml
+      - scripts/monitor-usage.mjs
+      - scripts/cloudflare-api.mjs
+permissions:
+  contents: read
+concurrency:
+  group: sukan-rakyat-monitor
+  cancel-in-progress: false
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check API, D1-backed challenge and access boundaries
+        run: node scripts/check-backend.mjs
+        env:
+          SUKAN_API_URL: ${{ vars.SUKAN_API_URL }}
+  usage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check quota headroom
+        run: node scripts/monitor-usage.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_MONITOR_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          SUKAN_MONITOR_FREE_LIMITS: ${{ vars.SUKAN_MONITOR_FREE_LIMITS }}
