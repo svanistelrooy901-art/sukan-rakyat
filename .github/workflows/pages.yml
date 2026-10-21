@@ -19,6 +19,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run check
+      - name: Verify live backend before activating trial
+        run: node scripts/check-backend.mjs
+        env:
+          SUKAN_API_URL: ${{ vars.SUKAN_API_URL }}
       - run: npm run build
         env:
           SUKAN_API_URL: ${{ vars.SUKAN_API_URL }}
