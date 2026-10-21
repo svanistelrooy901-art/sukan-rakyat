@@ -19,3 +19,18 @@ export function validateSession(d){if(!SPORTS[d.sport]||!SPORTS[d.sport].formats
 export function shuffle(s,rng=Math.random){const players=s.players.filter(p=>p.status==='joined');for(let i=players.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[players[i],players[j]]=[players[j],players[i]]}players.forEach((p,i)=>{p.team=i%2?'B':'A';p.position=''})}
 function future(days,hour){const d=new Date();d.setDate(d.getDate()+days);d.setHours(hour,0,0,0);return new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
 export function seed(){const names=['Mamu','Aiman','Faris','Hakim','Syafiq','Amir','Azlan','Din','Izzat','Rizal','Khairul','Faiz'];return [{id:'futsal-jumaat',sport:'futsal',format:'5 sebelah',title:'Friday Night Futsal',location:'Court contoh · Bayan Baru',date:future(3,21),capacity:16,fee:2000,cost:28000,owner:'mamu',ownerName:'Mamu',account:'',recipient:'',qr:'',note:'Bawa kasut court dan air sendiri. Kita main santai, semua dapat minit!',formation:'2-2',courts:1,players:names.map((name,i)=>({id:i?'p'+i:'mamu',name,status:'joined',payment:i<8?'verified':i<10?'pending':'unpaid',team:i%2?'B':'A',position:'',verifiedAt:null}))},{id:'bola-ahad',sport:'football',format:'9 sebelah',title:'Veteran Turun Padang',location:'Padang contoh · Seberang Jaya',date:future(5,8),capacity:28,fee:1500,cost:30000,owner:'p1',ownerName:'Aiman',account:'',recipient:'',qr:'',note:'Rolling subs. Penat? Tukar dulu, sambung kemudian.',formation:'3-3-2',courts:1,players:names.slice(1,7).map((name,i)=>({id:'p'+(i+1),name,status:'joined',payment:'unpaid',team:'',position:''}))},{id:'badminton-rabu',sport:'badminton',format:'Beregu',title:'Smash & Santai',location:'Dewan contoh · Batu Kawan',date:future(2,20),capacity:12,fee:1200,cost:12000,owner:'p2',ownerName:'Faris',account:'',recipient:'',qr:'',note:'Dua court. Shuttle dibawa organizer.',formation:'',courts:2,players:[{id:'p2',name:'Faris',status:'joined',payment:'verified',team:'',position:''}]}]}
+
+// WhatsApp click-to-chat accepts international digits, without the leading +.
+export function organizerPhone(value){
+ if(typeof value!=='string'||value.length>40||!/^\+?[\d\s()\-]+$/.test(value.trim()))throw new Error('Isi nombor WhatsApp organizer yang sah, contoh +60123456789.');
+ let phone=value.trim().replace(/[\s()\-]/g,'').replace(/^\+/,'');
+ if(phone.startsWith('00'))phone=phone.slice(2);
+ else if(phone.startsWith('0'))phone='60'+phone.slice(1);
+ if(!/^[1-9]\d{7,14}$/.test(phone)||phone.startsWith('600'))throw new Error('Guna kod negara, contoh +60123456789 (Malaysia: 0123456789 juga diterima).');
+ return phone;
+}
+export function receiptLink(s,p){
+ const phone=organizerPhone(s.organizerPhone),amount=p.payment==='pending'?p.claimAmount:Math.max(0,balance(s,p));
+ const text=`Salam ${s.ownerName}, saya ${p.name}.\nSukan Rakyat — ${s.title}\nTarikh sesi: ${new Date(s.date).toLocaleString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'})} (MYT)\nSaya dah transfer ${money(amount)}.\nSaya akan lampirkan resit di sini. Mohon semak transaksi bank. Terima kasih!`;
+ return 'https://wa.me/'+phone+'?text='+encodeURIComponent(text);
+}

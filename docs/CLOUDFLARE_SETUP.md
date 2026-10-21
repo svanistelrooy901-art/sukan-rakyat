@@ -101,3 +101,12 @@ npx --no-install wrangler d1 migrations apply sukan-rakyat --local --config work
 ```
 
 Use Node.js 24.15 or newer. Local tests use SQLite to exercise the D1 query adapter and generated RSA keys to test Google token validation. They do not authenticate to a real Google account or remote Cloudflare database.
+
+
+### WhatsApp receipt update
+
+New sessions require an organizer WhatsApp number. Malaysian local numbers are normalized to international format. Active participants can view the number; public invites and waiting-list summaries exclude it. Existing organizers can add or change it in Payment → WhatsApp organizer.
+
+After “Saya dah bayar”, the app records a pending claim then opens a WhatsApp draft. The participant attaches the receipt and sends it themselves. A retry link remains available. Bank verification stays manual; a WhatsApp draft does not confirm payment. No receipt files are uploaded to the backend.
+
+Deploy **Deploy Cloudflare trial backend** from `main` for this update. The Pages health check requires `features.receiptWhatsApp` and holds publication until the updated backend is available. Successful backend workflow completion automatically starts Pages deployment.
