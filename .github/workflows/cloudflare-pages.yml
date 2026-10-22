@@ -51,6 +51,10 @@ jobs:
         run: node scripts/check-frontend.mjs
         env:
           SUKAN_FRONTEND_ORIGIN: ${{ steps.pages.outputs.origin }}
+      - name: Register custom subdomain
+        run: node scripts/attach-domain.mjs
+      - name: Check API access for custom origin
+        run: SUKAN_FRONTEND_ORIGIN=https://sukanr.digitalsambal.space node scripts/check-backend.mjs
       - name: Publish setup result
         run: |
           printf '## Cloudflare Pages beta\n\nFrontend: %s\n\nAdd this exact origin to the existing Google Web Client → Authorized JavaScript origins before inviting testers.\n\nGitHub Pages remains available during the two-account login trial.\n' "$PAGES_ORIGIN" >> "$GITHUB_STEP_SUMMARY"

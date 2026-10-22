@@ -7,7 +7,8 @@ if(!/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(client||'')||client.st
 const config=JSON.parse(await readFile(new URL('./wrangler.jsonc',import.meta.url),'utf8'));
 config.d1_databases[0].database_id=db;config.vars.GOOGLE_CLIENT_ID=client;
 // Preserve previously deployed origins during later backend-only deployments.
-const origins=new Set();
+const site=JSON.parse(await readFile(new URL('../site-config.json',import.meta.url),'utf8'));
+const origins=new Set(site.customDomain?[exactOrigin('https://'+site.customDomain)]:[]);
 if(process.env.CLOUDFLARE_API_TOKEN){
  try{const current=(await cloudflare(`/accounts/${accountId()}/workers/scripts/${config.name}/settings`)).result;
  for(const binding of current.bindings||[])if(binding.name==='ADDITIONAL_FRONTEND_ORIGINS'&&binding.type==='plain_text')for(const value of binding.text.split(',').filter(Boolean))origins.add(exactOrigin(value));
