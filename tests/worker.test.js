@@ -16,7 +16,7 @@ test('QR collection accepts 64 KB through 256 KB after base64 encoding, persists
  assert.equal((await call('/sessions/'+s.id)).data.session.qr,old);
 });
 class D1 {
- constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(schema)}
+ constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(schema);this.db.exec('CREATE TABLE user_identities(user_id TEXT PRIMARY KEY REFERENCES users(id),email TEXT NOT NULL)')}
  prepare(sql){const db=this.db;return {bind(...params){return {
   async first(){return db.prepare(sql).get(...params)||null},
   async all(){return {results:db.prepare(sql).all(...params)}},
@@ -24,7 +24,7 @@ class D1 {
  }}}}
  async batch(statements){this.db.exec('BEGIN');try{const r=[];for(const s of statements)r.push(await s.run());this.db.exec('COMMIT');return r}catch(e){this.db.exec('ROLLBACK');throw e}}
 }
-async function setup(){const env={DB:new D1(),GOOGLE_CLIENT_ID:'test.apps.googleusercontent.com',FRONTEND_ORIGIN:'https://frontend.example'};const tokens={};for(const id of['owner','alice','bob','outsider']){const token=randomToken();tokens[id]=token;env.DB.db.prepare('INSERT INTO users VALUES(?,?,?)').run(id,id,Date.now());env.DB.db.prepare('INSERT INTO auth_sessions VALUES(?,?,?)').run(await hash(token),id,Date.now()+86400000)}const call=async(path,method='GET',data,user='owner',origin=env.FRONTEND_ORIGIN)=>{const r=await worker.fetch(new Request('https://api.example'+path,{method,headers:{...(origin?{Origin:origin}:{}),...(tokens[user]?{Authorization:'Bearer '+tokens[user]}:{}),...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined}),env);return{status:r.status,data:await r.json(),headers:r.headers}};return{env,tokens,call}}
+async function setup(){const env={DB:new D1(),GOOGLE_CLIENT_ID:'test.apps.googleusercontent.com',FRONTEND_ORIGIN:'https://frontend.example'};const tokens={};for(const id of['owner','alice','bob','outsider']){const token=randomToken();tokens[id]=token;env.DB.db.prepare('INSERT INTO users(id,name,created_at) VALUES(?,?,?)').run(id,id,Date.now());env.DB.db.prepare('INSERT INTO auth_sessions VALUES(?,?,?)').run(await hash(token),id,Date.now()+86400000)}const call=async(path,method='GET',data,user='owner',origin=env.FRONTEND_ORIGIN)=>{const r=await worker.fetch(new Request('https://api.example'+path,{method,headers:{...(origin?{Origin:origin}:{}),...(tokens[user]?{Authorization:'Bearer '+tokens[user]}:{}),...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined}),env);return{status:r.status,data:await r.json(),headers:r.headers}};return{env,tokens,call}}
 const input=()=>({organizerPhone:'0123456789',title:'Test Game',location:'Court',sport:'futsal',format:'5 sebelah',date:new Date(Date.now()+86400000).toISOString(),capacity:2,cost:30000,fee:15000,courts:1,feeMode:'capacity',deadline:new Date(Date.now()+172800000).toISOString(),reminderHours:24});
 async function create(call,extra={}){const r=await call('/sessions','POST',{session:{...input(),...extra},commandId:crypto.randomUUID()});assert.equal(r.status,200,JSON.stringify(r.data));return r.data.session}
 async function cmd(call,s,action,data={},user='owner',id=crypto.randomUUID()){return call('/sessions/'+s.id+'/commands','POST',{action,...data,commandId:id},user)}
@@ -74,3 +74,38 @@ test('migration accepts only exact additional frontend origins and preserves ori
  for(const origin of['https://preview.sukan-rakyat-test.pages.dev','https://sukan-rakyat-test.pages.dev.evil.example','null',null,''])assert.equal((await call('/auth/challenge','POST',{},'none',origin)).status,403);
 });
 
+test('admin statistics deny unauthenticated users, ordinary organizers and unconfigured roles',async()=>{
+ const{call,env}=await setup();
+ assert.equal((await call('/admin/stats','GET',undefined,'none')).status,401);
+ assert.equal((await call('/admin/stats')).status,403);
+ env.DB.db.prepare('INSERT INTO user_identities(user_id,email) VALUES(?,?)').run('owner','admin@example.com');
+ assert.equal((await call('/admin/stats')).status,403);
+ env.ADMIN_EMAILS=' ADMIN@example.com ';
+ assert.equal((await call('/me')).data.user.isAdmin,true);
+ assert.equal((await call('/me','GET',undefined,'alice')).data.user.isAdmin,false);
+ assert.equal((await call('/admin/stats','GET',undefined,'alice')).status,403);
+ assert.equal((await call('/admin/stats?email=admin@example.com','GET',undefined,'bob')).status,403);
+ assert.equal((await call('/admin/stats','POST',{isAdmin:true},'alice')).status,403);
+ const r=await call('/admin/stats');assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.headers.get('Cache-Control'),'no-store');
+ assert.equal(r.data.accounts.total,4);assert.equal(r.data.games.total,0);assert.equal(r.data.participation.received,0);
+ assert.deepEqual(r.data.sports,[]);
+});
+test('admin aggregates all sessions, unique players, payments and Malaysia daily growth without private records',async()=>{
+ const{call,env}=await setup();env.ADMIN_EMAILS='admin@example.com';env.DB.db.prepare('INSERT INTO user_identities(user_id,email) VALUES(?,?)').run('owner','admin@example.com');
+ const first=await create(call);await join(call,first,'alice');await join(call,first,'bob');
+ await cmd(call,first,'payment',{playerId:'alice',status:'verified',amount:5000});
+ await cmd(call,first,'claim',{},'alice');await cmd(call,first,'attendance',{playerId:'alice',value:'present'});
+ const second=await create(call,{sport:'badminton',format:'Beregu'});
+ const yesterday=Date.now()-86400000;let data=JSON.parse(env.DB.db.prepare('SELECT data FROM sessions WHERE id=?').get(second.id).data);data.date=new Date(yesterday).toISOString();
+ env.DB.db.prepare('UPDATE sessions SET data=?,created_at=? WHERE id=?').run(JSON.stringify(data),Date.parse('2026-01-01T16:30:00Z'),second.id);
+ const r=await call('/admin/stats');assert.equal(r.status,200,JSON.stringify(r.data));const d=r.data;
+ assert.equal(d.games.total,2);assert.equal(d.games.organizers,1);assert.equal(d.games.upcoming,1);assert.equal(d.games.past,1);
+ assert.equal(d.participation.joined,3);assert.equal(d.participation.uniquePlayers,2);assert.equal(d.participation.waiting,1);
+ assert.equal(d.participation.received,5000);assert.equal(d.participation.target,45000);assert.equal(d.participation.remaining,40000);assert.equal(d.participation.pending,1);assert.equal(d.participation.present,1);
+ assert.equal(d.sports.length,2);assert.equal(d.accounts.loggedIn7,4);
+ const serialized=JSON.stringify(d);for(const secret of ['admin@example.com',first.inviteToken,'organizerPhone','tokenHash','ownerName'])assert.ok(!serialized.includes(secret),secret);
+ // Reversals reduce confirmed totals rather than counting all positive ledger entries.
+ await cmd(call,first,'payment',{playerId:'alice',status:'unpaid'});assert.equal((await call('/admin/stats')).data.participation.received,0);
+ const date=new Date();date.setUTCHours(16,30,0,0);env.DB.db.prepare('UPDATE users SET created_at=? WHERE id=?').run(date.getTime(),'bob');
+ const day=new Date(date.getTime()+8*3600000).toISOString().slice(0,10);assert.ok((await call('/admin/stats')).data.growth.some(r=>r.day===day&&r.accounts>=1));
+});

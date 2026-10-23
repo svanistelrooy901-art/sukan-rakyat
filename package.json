@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check live.js && node --check bootstrap.js && node --check core.js && node --check sw.js && node --check worker/src.js && node --check worker/auth.js && node --check worker/domain.js",
+    "check": "node --check app.js && node --check admin-view.js && node --check worker/admin.js && node --check live.js && node --check bootstrap.js && node --check core.js && node --check sw.js && node --check worker/src.js && node --check worker/auth.js && node --check worker/domain.js",
     "build": "node build.js"
   },
   "engines": {

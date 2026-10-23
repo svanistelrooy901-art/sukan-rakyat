@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-20",
   "workers_dev": true,
   "vars": {
+    "ADMIN_EMAILS": "",
     "FRONTEND_ORIGIN": "https://svanistelrooy901-art.github.io",
     "GOOGLE_CLIENT_ID": "REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com"
   },

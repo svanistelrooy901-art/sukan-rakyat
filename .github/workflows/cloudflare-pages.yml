@@ -17,6 +17,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+      ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
       GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
       SUKAN_API_URL: ${{ vars.SUKAN_API_URL }}
     steps:
@@ -40,6 +41,7 @@ jobs:
         run: node worker/configure.mjs
         env:
           CLOUDFLARE_PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
+      - run: npx --no-install wrangler d1 migrations apply sukan-rakyat --remote --config worker/deploy.json
       - run: npx --no-install wrangler deploy --config worker/deploy.json
       - name: Check API access from both frontend origins
         run: |
