@@ -1,4 +1,10 @@
 export const DEMO_USER = 'mamu';
+export const MAX_QR_BYTES = 256 * 1024;
+export const MAX_QR_DATA_URL_LENGTH = 23 + 4 * Math.ceil(MAX_QR_BYTES / 3);
+export function validateQrFile(file){
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error('Format gambar tidak disokong. Guna PNG, JPG atau WebP.');
+ if(file.size>MAX_QR_BYTES)throw new Error('Gambar terlalu besar. Maksimum 256 KB; fail dipilih '+Math.ceil(file.size/1024)+' KB.');
+}
 export const SPORTS = {football:{name:'Bola sepak',icon:'⚽',formats:['11 sebelah','9 sebelah']},futsal:{name:'Futsal',icon:'🥅',formats:['5 sebelah']},badminton:{name:'Badminton',icon:'🏸',formats:['Beregu','Perseorangan']}};
 export function money(cents){return new Intl.NumberFormat('ms-MY',{style:'currency',currency:'MYR'}).format(cents/100)}
 export function due(s,p){return p.assessedFee??s.fee}
@@ -57,3 +63,4 @@ export function setFormation(s,actor,formation){
  if(s.sport==='badminton'||!FORMATIONS[s.format]?.includes(formation))throw new Error('Formation tidak sah.');
  if(s.formation!==formation){s.formation=formation;for(const p of s.players)p.position=''}
 }
+

@@ -1,4 +1,4 @@
-import{setLineup,setFormation,organizerPhone,SPORTS,validateSession,mapsLink,join,leave,setPayment,recalculate,setAttendance,shuffle,canView,migrate,totals,balance}from'../core.js';
+import{MAX_QR_BYTES,MAX_QR_DATA_URL_LENGTH,setLineup,setFormation,organizerPhone,SPORTS,validateSession,mapsLink,join,leave,setPayment,recalculate,setAttendance,shuffle,canView,migrate,totals,balance}from'../core.js';
 import{fail,randomToken}from'./auth.js';
 export function text(value,max,required=false){if(typeof value!=='string'||value.length>max||(required&&!value.trim()))fail(400,'Maklumat teks tidak sah.');return value.trim()}
 export function cents(n){if(!Number.isSafeInteger(n)||n<0||n>100000000)fail(400,'Jumlah tidak sah.');return n}
@@ -14,7 +14,7 @@ case 'fees':{const cost=cents(cmd.cost);if(![0,24,48].includes(cmd.reminderHours
 case 'note':s.note=text(cmd.note,1000);break;
 case 'location':{const location=text(cmd.location,150,true),link=mapsLink(text(cmd.mapsUrl||'',2048));s.location=location;s.mapsUrl=link;break}
 case 'contact':s.organizerPhone=organizerPhone(cmd.organizerPhone);break;
-case 'collection':s.account=text(cmd.account||'',100);s.recipient=text(cmd.recipient||'',100);if(cmd.qr!==undefined){if(typeof cmd.qr!=='string'||cmd.qr.length>90000||(cmd.qr&&!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(cmd.qr)))fail(400,'QR mesti PNG/JPG/WebP, maksimum 64 KB.');if(cmd.qr&&atob(cmd.qr.split(',')[1]).length>65536)fail(400,'QR maksimum 64 KB.');s.qr=cmd.qr}break;
+case 'collection':s.account=text(cmd.account||'',100);s.recipient=text(cmd.recipient||'',100);if(cmd.qr!==undefined){if(typeof cmd.qr!=='string'||cmd.qr.length>MAX_QR_DATA_URL_LENGTH||(cmd.qr&&!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(cmd.qr)))fail(400,'QR mesti PNG/JPG/WebP, maksimum 256 KB.');if(cmd.qr&&atob(cmd.qr.split(',')[1]).length>MAX_QR_BYTES)fail(400,'QR maksimum 256 KB.');s.qr=cmd.qr}break;
 case 'shuffle':if(s.sport==='badminton'){const ps=s.players.filter(p=>p.status==='joined');for(let i=ps.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ps[i],ps[j]]=[ps[j],ps[i]]}ps.forEach((p,i)=>p.team=String(Math.floor(i/(s.format==='Beregu'?2:1))+1))}else shuffle(s);break;
 case 'position':setLineup(s,user.id,cmd.team,cmd.slot,cmd.playerId);break;
 case 'assign':{const p=s.players.find(p=>p.id===cmd.playerId&&p.status==='joined');if(!p)fail(400,'Pemain tidak sah.');const team=text(cmd.team,4);if(s.sport==='badminton'){if(team&&(!/^\d+$/.test(team)||Number(team)<1||Number(team)>500))fail(400,'Pasangan tidak sah.');if(team&&s.players.filter(x=>x.id!==p.id&&x.status==='joined'&&x.team===team).length>=(s.format==='Beregu'?2:1))fail(409,'Pasangan sudah penuh.')}else if(!['','A','B'].includes(team))fail(400,'Team tidak sah.');if(p.team!==team)p.position='';p.team=team;break}
@@ -22,3 +22,4 @@ case 'formation':setFormation(s,user.id,cmd.formation);break;
 default:fail(400,'Tindakan tidak dikenali.');}return s}
 export function applyJoin(s,user){migrate(s);if(new Date(s.date).getTime()<Date.now())fail(409,'Sesi telah bermula. Penyertaan ditutup.');if(s.feeHistory.some(h=>h.mode==='attendance'))fail(409,'Kutipan kehadiran telah dimuktamadkan.');if(!s.players.some(p=>p.id===user.id))join(s,user.id,user.name);return s}
 export function canLeave(s,user){const p=s.players.find(p=>p.id===user.id);return !!p&&p.id!==s.owner&&balance(s,p)<=0}
+

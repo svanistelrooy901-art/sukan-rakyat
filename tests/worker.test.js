@@ -1,5 +1,20 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{DatabaseSync}from'node:sqlite';import{readFile}from'node:fs/promises';import worker from'../worker/src.js';import{hash,randomToken,verifyGoogle}from'../worker/auth.js';
 const schema=await readFile(new URL('../worker/migrations/0001_initial.sql',import.meta.url),'utf8');
+test('QR collection accepts 64 KB through 256 KB after base64 encoding, persists across reads and rejects oversized requests',async()=>{
+ const {call}=await setup(),s=await create(call);
+ for(const size of [64000,65536,65537,256*1024]){
+  const qr='data:image/png;base64,'+Buffer.alloc(size).toString('base64');
+  const result=await cmd(call,s,'collection',{recipient:'Mamu',account:'Test bank',qr});
+  assert.equal(result.status,200,JSON.stringify(result.data));
+  assert.equal((await call('/sessions/'+s.id)).data.session.qr,qr);
+ }
+ const old=(await call('/sessions/'+s.id)).data.session.qr;
+ const tooBig='data:image/png;base64,'+Buffer.alloc(256*1024+1).toString('base64');
+ assert.equal((await cmd(call,s,'collection',{qr:tooBig})).status,400);
+ assert.equal((await cmd(call,s,'collection',{qr:'data:image/svg+xml;base64,PHN2Zy8+'})).status,400);
+ assert.equal((await cmd(call,s,'collection',{qr:'A'.repeat(400000)})).status,413);
+ assert.equal((await call('/sessions/'+s.id)).data.session.qr,old);
+});
 class D1 {
  constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(schema)}
  prepare(sql){const db=this.db;return {bind(...params){return {
@@ -23,7 +38,7 @@ test('claimed amount is fixed until verified, even if organizer recalculates',as
 test('stale fee preview is rejected before changing assessments',async()=>{const{call}=await setup(),s=await create(call);await cmd(call,s,'note',{note:'Updated'});const r=await cmd(call,s,'fees',{cost:40000,mode:'fixed',manual:20000,reminderHours:24,deadline:'',expectedVersion:s.version});assert.equal(r.status,409);const final=(await call('/sessions/'+s.id)).data.session;assert.equal(final.cost,30000)});
 test('leave promotes waiting participant; former member loses dashboard access',async()=>{const{call}=await setup(),s=await create(call);await join(call,s,'alice');await join(call,s,'bob');assert.equal((await cmd(call,s,'leave',{},'alice')).status,200);assert.equal((await call('/sessions/'+s.id,'GET',undefined,'alice')).status,403);assert.equal((await call('/sessions/'+s.id,'GET',undefined,'bob')).status,200)});
 test('create retries return same session and do not create duplicate games',async()=>{const{call}=await setup(),commandId=crypto.randomUUID(),payload={session:input(),commandId};const a=await call('/sessions','POST',payload),b=await call('/sessions','POST',payload);assert.equal(a.data.session.id,b.data.session.id);assert.equal((await call('/sessions')).data.sessions.length,1)});
-test('invalid Maps links, amount and oversized QR rejected; state unchanged',async()=>{const{call}=await setup(),s=await create(call);assert.equal((await cmd(call,s,'location',{location:'Court',mapsUrl:'javascript:alert(1)'})).status,400);assert.equal((await cmd(call,s,'payment',{playerId:'owner',status:'verified',amount:-1})).status,400);assert.equal((await cmd(call,s,'collection',{qr:'data:image/png;base64,'+'A'.repeat(90000)})).status,400);assert.equal((await call('/sessions/'+s.id)).data.session.qr,'')});
+test('invalid Maps links, amount and oversized QR rejected; state unchanged',async()=>{const{call}=await setup(),s=await create(call);assert.equal((await cmd(call,s,'location',{location:'Court',mapsUrl:'javascript:alert(1)'})).status,400);assert.equal((await cmd(call,s,'payment',{playerId:'owner',status:'verified',amount:-1})).status,400);assert.equal((await cmd(call,s,'collection',{qr:'data:image/png;base64,'+'A'.repeat(350000)})).status,400);assert.equal((await call('/sessions/'+s.id)).data.session.qr,'')});
 test('revoked session tokens are rejected immediately',async()=>{const{call}=await setup();assert.equal((await call('/auth/logout','POST',{})).status,200);assert.equal((await call('/me')).status,401)});
 test('challenge rate limit is enforced and responses never cached',async()=>{const{call}=await setup();let r;for(let i=0;i<21;i++)r=await call('/auth/challenge','POST',{},'none');assert.equal(r.status,429);assert.equal(r.headers.get('Cache-Control'),'no-store')});
 test('Google signature, nonce, audience, expiry and challenge replay are checked',async()=>{const{call}=await setup();const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);jwk.kid='test-key';jwk.alg='RS256';const fetcher=async()=>new Response(JSON.stringify({keys:[jwk]}));const b64=v=>Buffer.from(typeof v==='string'?v:JSON.stringify(v)).toString('base64url');const sign=async(claims)=>{const first=b64({alg:'RS256',kid:'test-key'})+'.'+b64(claims);return first+'.'+Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(first))).toString('base64url')};const nonce=(await call('/auth/challenge','POST',{},'none')).data.nonce,now=Math.floor(Date.now()/1000),claims={sub:'google-user',name:'Google Player',email_verified:true,iss:'https://accounts.google.com',aud:'test.apps.googleusercontent.com',nonce,iat:now,exp:now+3600};const token=await sign(claims);assert.equal((await verifyGoogle(token,claims.aud,nonce,fetcher)).id,'google-user');// Verify signed variants, not just JWT structure.
@@ -58,3 +73,4 @@ test('migration accepts only exact additional frontend origins and preserves ori
  for(const origin of[env.FRONTEND_ORIGIN,'https://sukan-rakyat-test.pages.dev']){const r=await call('/auth/challenge','POST',{},'none',origin);assert.equal(r.status,200);assert.equal(r.headers.get('Access-Control-Allow-Origin'),origin);assert.equal(r.headers.get('Vary'),'Origin')}
  for(const origin of['https://preview.sukan-rakyat-test.pages.dev','https://sukan-rakyat-test.pages.dev.evil.example','null',null,''])assert.equal((await call('/auth/challenge','POST',{},'none',origin)).status,403);
 });
+

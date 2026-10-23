@@ -1,7 +1,7 @@
 import{HttpError,fail,hash,randomToken,verifyGoogle,authenticate,rateLimit}from'./auth.js';
 import{createSession,summary,visible,mutate,applyJoin}from'./domain.js';
 import{canView}from'../core.js';
-const MAX_BODY=128*1024;
+const MAX_BODY=384*1024;
 function domain(fn){try{return fn()}catch(e){if(e instanceof HttpError)throw e;fail(400,String(e.message||'Maklumat tidak sah.').slice(0,160))}}
 async function body(request){if(!(request.headers.get('Content-Type')||'').startsWith('application/json'))fail(415,'Gunakan JSON.');if(Number(request.headers.get('Content-Length'))>MAX_BODY)fail(413,'Permintaan terlalu besar.');const reader=request.body?.getReader();if(!reader)fail(400,'JSON diperlukan.');let size=0,chunks=[];while(true){const{done,value}=await reader.read();if(done)break;size+=value.length;if(size>MAX_BODY){await reader.cancel();fail(413,'Permintaan terlalu besar.')}chunks.push(value)}try{const bytes=new Uint8Array(size);let at=0;for(const c of chunks){bytes.set(c,at);at+=c.length}const b=JSON.parse(new TextDecoder().decode(bytes));if(!b||Array.isArray(b)||typeof b!=='object')throw 0;return b}catch{fail(400,'JSON tidak sah.')}}
 function requestId(v){if(typeof v!=='string'||!/^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$/.test(v))fail(400,'ID permintaan diperlukan.');return v}
@@ -25,3 +25,4 @@ export default{
  async fetch(request,env){const origin=request.headers.get('Origin'),allowed=[env.FRONTEND_ORIGIN,...(env.ADDITIONAL_FRONTEND_ORIGINS||'').split(',')].filter(Boolean).includes(origin);const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin'};if(allowed){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='Authorization, Content-Type';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Max-Age']='600'}try{if(request.method==='OPTIONS'){if(!allowed)fail(403,'Origin tidak dibenarkan.');return new Response(null,{status:204,headers})}if(request.method==='POST'&&!allowed)fail(403,'Origin tidak dibenarkan.');return new Response(JSON.stringify(await route(request,env)),{headers})}catch(e){return new Response(JSON.stringify({error:e instanceof HttpError?e.message:'Backend tidak dapat memproses permintaan.'}),{status:e instanceof HttpError?e.status:500,headers})}},
  async scheduled(event,env,ctx){const now=Date.now();ctx.waitUntil(env.DB.batch([env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at<=?').bind(now),env.DB.prepare('DELETE FROM auth_challenges WHERE expires_at<=?').bind(now),env.DB.prepare('DELETE FROM request_limits WHERE expires_at<=?').bind(now)]))}
 };
+
