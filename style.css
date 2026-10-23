@@ -4,3 +4,5 @@
 .position-button{background:transparent;color:inherit;border:1px solid transparent;border-radius:9px;padding:5px 0;cursor:pointer;min-width:0}.position-button:hover,.position-button:focus-visible{background:#10281bc9;border-color:var(--lime);outline:2px solid var(--lime);outline-offset:2px}.position-label{font-size:9px;font-weight:800;color:#e5f4df}.player-dot>span:last-child{max-width:100%;overflow-wrap:anywhere}.pitch-row .player-dot{flex:1;max-width:75px;min-width:0}.pitch:before,.pitch:after,.pitch-circle{pointer-events:none}
 
 .admin-table{overflow-x:auto}.admin-table table{width:100%;border-collapse:collapse;font-size:.9rem}.admin-table th,.admin-table td{text-align:left;padding:12px 8px;border-bottom:1px solid #ffffff20}.admin-table th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}.admin-table td:not(:first-child),.admin-table th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+
+@media(max-width:600px){header.admin-nav-visible{flex-wrap:wrap}header.admin-nav-visible nav{order:3;flex-basis:100%;justify-content:center;gap:6px}header.admin-nav-visible .profile{margin-left:auto}}

@@ -12,8 +12,8 @@ test('admin route uses authenticated stats, refreshes and removes data on logout
  globalThis.fetch=async(url,options)=>{const path=new URL(url).pathname;assert.ok(options.headers.Authorization);let data;
  if(path==='/me')data={user:{id:'admin',name:'Mamu',isAdmin:true}};else if(path==='/admin/stats'){count++;data=stats}else if(path==='/auth/logout')data={ok:true};else throw Error('Unexpected '+path);return new Response(JSON.stringify(data))};
  const flush=async()=>{await new Promise(setImmediate);await new Promise(setImmediate)};
- await import('../live.js?admin-ui');await flush();assert.match(document.querySelector('#app').textContent,/AKAUN BERDAFTAR/);assert.equal(count,1);
+ await import('../live.js?admin-ui');await flush();assert.match(document.querySelector('#app').textContent,/AKAUN BERDAFTAR/);assert.equal(count,1);assert.equal(document.querySelector('header nav').lastElementChild.textContent,'Admin Dashboard');assert.equal(document.querySelector('#admin-dashboard-nav').getAttribute('aria-current'),'page');assert.ok([...document.querySelectorAll('[data-nav]')].every(b=>!b.classList.contains('active')));
  document.querySelector('[data-do="refresh"]').click();await flush();assert.equal(count,2);
  document.querySelector('#profile').click();await flush();assert.ok(document.querySelector('[data-do="admin"]'));
- document.querySelector('[data-do="logout"]').click();await flush();assert.match(document.querySelector('#app').textContent,/Login admin/);assert.doesNotMatch(document.querySelector('#app').textContent,/AKAUN BERDAFTAR/);dom.window.close();
+ document.querySelector('[data-do="logout"]').click();await flush();assert.match(document.querySelector('#app').textContent,/Login admin/);assert.doesNotMatch(document.querySelector('#app').textContent,/AKAUN BERDAFTAR/);assert.equal(document.querySelector('#admin-dashboard-nav'),null);dom.window.close();
 });
